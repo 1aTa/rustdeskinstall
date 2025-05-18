@@ -288,81 +288,10 @@ function setuphttp () {
     wget https://raw.githubusercontent.com/dinger1986/rustdeskinstall/master/linuxclientinstall.sh
     sudo sed -i "s|secure-string|${string64rev}|g" linuxclientinstall.sh
 
-    # Download and install gohttpserver
-    # Make Folder /opt/gohttp/
-    if [ ! -d "/opt/gohttp" ]; then
-        echo "Creating /opt/gohttp"
-        sudo mkdir -p /opt/gohttp/
-        sudo mkdir -p /opt/gohttp/public
-    fi
-    sudo chown "${uname}" -R /opt/gohttp
-    cd /opt/gohttp
-    GOHTTPLATEST=$(curl https://api.github.com/repos/codeskyblue/gohttpserver/releases/latest -s | grep "tag_name"| awk '{print substr($2, 2, length($2)-3) }')
-
-    echo "Installing Go HTTP Server"
-    if [ "${ARCH}" = "x86_64" ] ; then
-    wget "https://github.com/codeskyblue/gohttpserver/releases/download/${GOHTTPLATEST}/gohttpserver_${GOHTTPLATEST}_linux_amd64.tar.gz"
-    tar -xf  gohttpserver_${GOHTTPLATEST}_linux_amd64.tar.gz 
-    elif [ "${ARCH}" =  "aarch64" ] ; then
-    wget "https://github.com/codeskyblue/gohttpserver/releases/download/${GOHTTPLATEST}/gohttpserver_${GOHTTPLATEST}_linux_arm64.tar.gz"
-    tar -xf  gohttpserver_${GOHTTPLATEST}_linux_arm64.tar.gz
-    elif [ "${ARCH}" = "armv7l" ] ; then
-    echo "Go HTTP Server not supported on 32bit ARM devices"
-    echo -e "Your IP/DNS Address is ${wanip}"
-    echo -e "Your public key is ${key}"
-    exit 1
-    fi
-
-    # Copy Rustdesk install scripts to folder
-    mv /opt/rustdesk/WindowsAgentAIOInstall.ps1 /opt/gohttp/public/
-    mv /opt/rustdesk/linuxclientinstall.sh /opt/gohttp/public/
-
-    # Make gohttp log folders
-    if [ ! -d "/var/log/gohttp" ]; then
-        echo "Creating /var/log/gohttp"
-        sudo mkdir -p /var/log/gohttp/
-    fi
-    sudo chown "${uname}" -R /var/log/gohttp/
-
-    echo "Tidying up Go HTTP Server Install"
-    if [ "${ARCH}" = "x86_64" ] ; then
-    rm gohttpserver_"${GOHTTPLATEST}"_linux_amd64.tar.gz
-    elif [ "${ARCH}" = "armv7l" ] || [ "${ARCH}" =  "aarch64" ]; then
-    rm gohttpserver_"${GOHTTPLATEST}"_linux_arm64.tar.gz
-    fi
-
-
-    # Setup Systemd to launch Go HTTP Server
-    gohttpserver="$(cat << EOF
-[Unit]
-Description=Go HTTP Server
-[Service]
-Type=simple
-LimitNOFILE=1000000
-ExecStart=/opt/gohttp/gohttpserver -r ./public --port 8000 --auth-type http --auth-http admin:${admintoken}
-WorkingDirectory=/opt/gohttp/
-User=${uname}
-Group=${gname}
-Restart=always
-StandardOutput=append:/var/log/gohttp/gohttpserver.log
-StandardError=append:/var/log/gohttp/gohttpserver.error
-# Restart service after 10 seconds if node service crashes
-RestartSec=10
-[Install]
-WantedBy=multi-user.target
-EOF
-)"
-    echo "${gohttpserver}" | sudo tee /etc/systemd/system/gohttpserver.service > /dev/null
-    sudo systemctl daemon-reload
-    sudo systemctl enable gohttpserver.service
-    sudo systemctl start gohttpserver.service
-
-
     echo -e "Your IP/DNS Address is ${wanip}"
     echo -e "Your public key is ${key}"
     echo -e "Install Rustdesk on your machines and change your public key and IP/DNS name to the above"
-    echo -e "You can access your install scripts for clients by going to http://${wanip}:8000"
-    echo -e "Username is admin and password is ${admintoken}"
+    echo -e "You can access your customized client install scripts in the RuskDesk install directory"
     if [[ -z "$http" ]]; then
         echo "Press any key to finish install"
         while [ true ] ; do
@@ -379,7 +308,7 @@ EOF
 
 # Choice for Extras installed
 if [[ -z "$http" ]]; then
-    PS3='Please choose if you want to download configs and install HTTP server:'
+    PS3='Please choose if you want to download and customize client install scripts:'
     EXTRA=("Yes" "No")
     select EXTRAOPT in "${EXTRA[@]}"; do
     case $EXTRAOPT in
